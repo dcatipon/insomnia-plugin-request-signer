@@ -1,0 +1,23 @@
+{
+  "name": "insomnia-plugin-request-signer",
+  "version": "1.0.0",
+  "description": "Custom request signer for Insomnia REST client",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dcatipon/insomnia-plugin-request-signer.git"
+  },
+  "author": "dcatipon",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dcatipon/insomnia-plugin-request-signer/issues"
+  },
+  "homepage": "https://github.com/dcatipon/insomnia-plugin-request-signer#readme",
+  "insomnia": {
+    "name": "request-signer",
+    "description": "Custom request signer"
+  }
+}
