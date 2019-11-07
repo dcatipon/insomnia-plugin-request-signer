@@ -3,64 +3,69 @@ const crypto = require('crypto');
 module.exports.templateTags = [{
   name: 'request_signer',
   displayName: 'Request Signer',
-  description: 'Generate verification string',
-  args: [
-      {
-        displayName: 'Endpoint',
-        description: 'The endpoint you are accessing',
-        type: 'string',
-        defaultValue: '/api/some/endpoint'
-      },
-      {
-          displayName: 'Public Key',
-          description: 'Your public key',
-          type: 'string',
-          defaultValue: 'abcdefg'
-      },
-      {
-        displayName: 'Private Key',
-        description: 'Your private key',
-        type: 'string',
-        defaultValue: '1234567'
-      },
-      {
-        displayName: 'Time',
-        description: 'The current UNIX time.',
-        type: 'string',
-        defaultValue: '946684800'
-      },
-      {
-        displayName: 'Data',
-        description: 'The payload',
-        type: 'string',
-        defaultValue: '{}'
-      }
-  ],
+  description: 'Generate and returns verification string.',
 
-  async run (context, endpoint, publicKey, privateKey, unixTime, data) {
-    let params = JSON.parse(data)
-    params['key'] = publicKey
-    params['time'] = unixTime
+  async run (context) {
+    let request = await context.util.models.request.getById(context.meta.requestId);
+    let params = this.getParams(context, request);
+    let endpoint = this.getEndpoint(context, request.url);
+    let privateKey = context.context['private_key'];
 
-    let verification = this.generateVerification(params, endpoint, unixTime, publicKey, privateKey)
-
-    return verification
+    return this.generateVerification(params, endpoint, params['time'], params['key'], privateKey);
   },
 
   generateVerification (params, endpoint, unixTime, publicKey, privateKey) {
-    params = [publicKey, unixTime, endpoint, this.urlEncode(params)]
+    params = [publicKey, unixTime, endpoint, this.urlEncode(params)];
 
-    return crypto.createHmac('sha512', privateKey).update(params.join('|')).digest('hex')
+    return crypto.createHmac('sha512', privateKey).update(params.join('|')).digest('hex');
   },
 
   urlEncode (data) {
-    let key
-    let out = new Array()
+    let key;
+    let out = [];
 
     for (key in data) {
-      out.push(key + '=' + encodeURIComponent(data[key]))
+      out.push(key + '=' + encodeURIComponent(data[key]));
     }
 
-    return out.join('&')
+    return out.join('&');
+  },
+
+  getDataValue (context, value) {
+    if (value.startsWith("{{") && value.endsWith("}}")) {
+      return context.context[value.replace(/[{}]/g, '').trim()];
+    }
+
+    return value;
+  },
+
+  getEndpoint (context, url) {
+    if (url.startsWith("{{")) {
+      return url.replace(/\s?\{[^}]+\}\}/g, '').trim();
+    }
+
+    let baseUrl = context.context['base_url'];
+
+    return url.replace(baseUrl, '').trim();
+  },
+
+  getParams (context, request) {
+    let requestParams = request.parameters;
+    let params = [];
+    let index;
+
+    if (request.method == 'POST') {
+      requestParams = request.body.params;
+    }
+
+    for (index in requestParams) {
+      if (requestParams[index].name == 'verification') {
+        continue;
+      }
+
+      params[requestParams[index].name] = this.getDataValue(context, requestParams[index].value);
+    }
+
+    return params;
   }
 }];
